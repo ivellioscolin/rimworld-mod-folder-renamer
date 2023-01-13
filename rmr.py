@@ -64,6 +64,7 @@ def RenameModFolder(mod_dir, mod_db, bSteam, test_mode):
         print('Rename mod folder to steam style')
     else:
         print('Rename mod folder to steam mod id + mod name')
+
     for fd in os.listdir(mod_dir):
         mod_local = os.path.join(mod_dir, fd)
         if os.path.isdir(mod_local):
@@ -71,35 +72,43 @@ def RenameModFolder(mod_dir, mod_db, bSteam, test_mode):
             mod_local_name = mod_local_info.find('name').text
             mod_local_package_id = mod_local_info.find('packageId').text
 
+            mod_local_pub_id = None
+            if os.path.isfile(os.path.join(mod_local, 'About', 'PublishedFileId.txt')):
+                published_id_file = open(os.path.join(mod_local, 'About', 'PublishedFileId.txt'), 'r')
+                mod_local_pub_id = published_id_file.read().splitlines()[0]
+                published_id_file.close()
+
             steam_mod_id = None
             steam_mod_name = None
             for mod_steam in mod_db['database']:
                 if mod_local_package_id.lower() == (mod_db['database'][mod_steam]["packageId"]).lower():
-                    steam_mod_id = mod_steam
-                    break
+                    # In case same packageId
+                    if mod_local_pub_id is not None:
+                        if mod_local_pub_id == mod_steam:
+                            steam_mod_id = mod_steam
+                            steam_mod_name = mod_db['database'][mod_steam]["name"]
+                            break
+                    else:
+                        steam_mod_id = mod_steam
+                        steam_mod_name = mod_db['database'][mod_steam]["name"]
+                        break
 
             mod_src = mod_local
 
             if steam_mod_id is None:
-                print('W:',mod_local_name+'('+mod_local_package_id+') is not a steam mod')
-                dst = slugify(mod_local_name, True)
-                #mod_dst = os.path.join(os.path.dirname(mod_local), slugify(mod_local_name, True))
+                print('W:', mod_local_name + '(' + mod_local_package_id + ') is not a steam mod')
+                dst = slugify(mod_local_name, True) + '(' + mod_local_package_id +')'
             else:
                 if bSteam == True:
                     dst = steam_mod_id
-                    #mod_dst = os.path.join(os.path.dirname(mod_local), steam_mod_id)
                 else:
                     dst = steam_mod_id+"("+slugify(mod_local_name, True)+")"
-                    #mod_dst = os.path.join(os.path.dirname(mod_local), steam_mod_id+"("+slugify(mod_local_name, True)+")")
 
             if not fd == dst:
                 print('I:',fd,"->",dst)
                 if not test_mode:
                     os.rename(os.path.join(mod_dir, fd), os.path.join(mod_dir, dst))
-            #if not mod_src == mod_dst:
-                #print('o',mod_src,"->",mod_dst)
-                #if not test_mode:
-                #    os.rename(mod_src, mod_dst)
+
     if test_mode:
         print('-------- Trial Run Mode --------')
 
